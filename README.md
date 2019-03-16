@@ -13,15 +13,23 @@ Instalation
 ============
 
 1- Copy both files to a folder in the PC.
+
 2- Configure settings.txt with the appropiate working parameters.
+
 3- Set the appropiate permisions to the folders, as well as the user in which name the service will we invoqued in case of a remote save.
+
 4- Run the executable passing as parameter: install.
-	i.e: c:\SyncFolder\> SyncFolder install
-    This step must be done with an administrative account, and in an OS with UAC, from an elevated command prompt session. 
+   i.e: c:\SyncFolder\> SyncFolder install
+   This step must be done with an administrative account, and in an OS with UAC, from an elevated command prompt session. 
+   
 5- If the previous step was executed correctly, the output should be: "Service installed successfully". If the output is an initialization error requesting the file "MSVCR100.dll then should be installed the "Microsoft Visual C++ 2010 SP1 Redistributable Package" (vcredist_x86_sp1.exe), and repeat the step 4.
+
 6- Open "Service Manager": Wnd + R, and then invoque "services.msc".
+
 7- Search the service named: "Servicio Salva Automática de Archivos".
+
 8- Configure the tab "Start Sesion" with the credentials of the user authorized to access the program folders. If the save is to be done in the same PC (e.g.: to an external HDD), this step is not necessary.
+
 9- Start the service.
 
 Use
@@ -35,8 +43,10 @@ Uninstall
 
 1- Run the executable passing as parameter "uninstall".
     i.e: c:\SyncFolder\> SyncFolder uninstall
-    This step must be done using an administrative account, and in an OS with UAC, from an elevated command prompt session. 
+    This step must be done using an administrative account, and in an OS with UAC, from an elevated command prompt session.
+    
 2- If the previous step was executed correctly, the output should be: "Service deleted successfully".
+
 3- Check in Service Manager that the service does not longer exist. If it's still there, and it's state is "running", stop it manually.
 
 Q&A:
