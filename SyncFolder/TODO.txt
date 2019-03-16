@@ -1,0 +1,192 @@
+File_error library:
+
+1-	Change the duplicate string method used in the constructor of the m_error class (StrDup(_message)) for a better one (and in all other places where it's used). In the VS2012 documentation states that this function uses LocalAlloc to allocate the memory it uses (so to dealocate it must be used LocalFree), the use of both functions is not recomended, in sustitution should be used "heap functions".
+
+	Solved: I used _wcsdup(), but this need further investigation because the documentation states "This API cannot be used in applications that execute in the Windows Runtime"
+
+2-	In the error report function used in the class m_error use __wcserror() to convert from the code to a human readable message.
+
+	Solution: This is posible if we set a range of my "application defined error codes" (from 0x30000000 to 0x3FFFFFFF) and mask the errno error code with the mask	0x30000000, passing the result as the parameter _error_code to the constructor of the m_error. Then inside the constructor check if _error_code is inside of the	range, extract the real errno error code and use _wcserror to convert it to a wchar_t. From ERRNO.H there can be seen that there are only 140 errno error codes, so	the 0x30000000 - 0x3FFFFFFF is more than enough.
+
+	This also answer the next item in this list: there is not relation whatsoever between errno and the windows system error codes.
+
+3-	Investigate the relation between errno and the windows system error codes, maybe they are the same, or there is a procedure that convert between them.
+
+4- In the library "file_error" add a parameter to the constructor (with all that it carry with it) to specify the name of the function where the error was reported.
+
+5- Modify the library "file_error" to accept in the constructor of the m_error, instead of a single parameter to describe the error (_message), a list of parameter in the same fashion as "printf": a first one as a FormatString with format modifiers (%s,%d,%u,etc.) and a list of argument to substitute the placeholders of the format modifiers.
+
+6- Check that every pointer is initialized as null.
+
+7- Transpose the error checking routine in "instanciar_Folder_class(LPTSTR Folder_name)" to the file_error library, in such a way that it could be accesible by means of macros or functions. Those macros/functions will receive as parameter the definitions of what is an error (fatal or not) and return a corresponding value for the calling function to take an adecuate decision.
+
+8- En SyncFolder.cpp to check the log file size, if it's bigger that what is mandated in it's corresponding variable, delete the log and create a new one. 
+
+conf_file library:
+
+1-	Up to now the only text file format this application support for the settings.txt file is ANSI 1-byte multibyte character. The other two posibilities (up to my knowledge
+	they are ANSI 2-byte multibyte and Unicode) need to be implemented. This implies two task, the first is to implement check_text_file_format() and the second is in the 
+	switch of read_conf_file(). In the case of Unicode what is needed is to check in the begining of the file if exist the BOM (two characters that some program, as Notepad, 
+	insert before the real content of the file).
+
+2- In the library "conf_file", whose objetive is to create an interface to linux style configuration files, there is the need to make the following changes:
+
+	- convert the "struct parameters_t" to class.
+	- read_conf_file() changes then to be the constructor of the parameters_t class.
+	- the structure of the parameters_t class would be:
+
+		struct parameter {
+		
+			wchar_t*		Nombre;
+			wchar_t*		Valor;
+		};
+
+		struct p_indexes {
+		
+			wchar_t*			Nombre;
+			struct parameter*	next;
+			struct parameter*	last;
+		};
+
+		class parameters_t {
+		
+		// Properties:
+
+		private:
+
+			struct parameter**	parameters_array;
+			UINT				parameters_count;
+
+			struct p_indexes**	followers_indexes;	// [{Nombre1,next parameter*, last parameter*}] ... [{NombreN,next parameter*, last parameter*}]
+			UINT				followers_count;
+
+		// Methods:
+
+		private:
+
+			sort_parameters_by_name();									// This method runs when all the parameters has been read from the configuration file, and what it does
+																		// is rearrange the parameters_array by name. It creates then the array followers_indexes and updates
+																		// adecuatelly the property followers_count.
+		
+		public:
+
+			wchar_t* get_last_parameter_by_name(wchar_t* _name);		// This method return the last parameter that has the name: _name. This is for parameters that can be 
+																		// repeated in the configuration file but is only needed one, so the last one is the one that counts.
+																		// The return value is the value of the parameter value or NULL to indicate that the parameter does not
+																		// exist. It takes the return value consulting the followers_indexes array in the last field that
+																		// correspond to the name of the parameter.
+
+			INT get_last_parameter_by_name(wchar_t* _name);				// This is the same of above but for parameters that are needed as positive integers, the return value
+																		// is an INT to allow for signalling an error with the value -1. So the calling function should check 
+																		// that value as and indication of error.
+
+			wchar_t* get_next_parameter_by_name(wchar_t* _name);		// This method is for retreiving a group of parameters that share the same name, but different values.
+																		// The first time it's called it returns the value of the parameter pointed to by the "next parameter*"
+																		// field of the "followers_indexes" array member that correspond to the name. That one will be the first
+																		// parameter with that name. Upon returning it updates the "next parameter*" field with the address of
+																		// the next parameter in the parameters_array that correspond to that name, preparing for the next call.
+																		// This goes on like that until "next parameter*" is equal to "last parameter*", returning NULL when that
+																		// happens.
+
+			INT get_next_parameter_by_name(wchar_t* _name);				// The same but for INT parameters. The same restrictions and return values as the version "last".
+		
+		}
+
+	This configuration changes the way of using the library. Now the parameters could be repeated in more than one line, such as this:
+
+	Name	value1
+	Name	value2
+	...
+
+	It's up to the user program the decision of using the last one or all of them. It could too use the first one.
+
+	The line structure proposed in the next issue (3) remains valid as to setting dynamically the names/values delimiters, values validators and comments starters.
+
+	With respect to setting multiple values in the same line, the objetive changes to having parameters that accepts values with begin value and final one.
+	
+	Examples of this could be range of ip addresses:
+
+		addresses	192.168.0.0 192.168.0.255
+
+	Any other use, with more than 2 values, could be accomodated with the initial configuration of repeating parameters with the same name.
+
+	For using the structure of multiple values in the same line the struct parameter will change to:
+
+	struct parameter {
+		
+			wchar_t*		Nombre;
+			wchar_t**		Valores;
+			UINT			Valores_count;
+		};
+
+	Any way, this new structure allows to stablish multiple values in the same line as well, and it looks to be cleaner that the first aproach. So the class changes to this:
+
+	class parameters_t {
+		
+		// Properties:
+
+		private:
+
+			struct parameter**	parameters_array;
+			UINT				parameters_count;
+
+	When the class is instantiated it reads all the parameters of the lines in they respective struct parameter. That lead to the possibility of having more than one struct
+	parameter with the same name and multiple values.
+
+	The use of the apropiate method is what give the user the posibility of determine how it's going to be used the parameters. The methods will be:
+
+	get_last_parameter_by_name	This one mantains it objetive, retreive the last parameter. Changes in the sense that now internally it has to search over all the structs
+								parameters that share the same name.
+
+	get_next_parameter_by_name	The same as above, and must mantain state internally (that complicates, but could be solved)
+
+	get_last_pair_parameters_by_name	This is for retreiving a parameter that is known that consists of initial and final value. The last is with the same objective that the
+										other version, parameters that has sense only one time.
+
+	get_next_pair_parameters_by_name	The combination of both aproaches.
+
+	The state manteinance procedure could be made too with the same followers_indexes array, what will change is the internal algorithm, that will be more complicated.
+	The use of sort_parameters_by_name() will remain valid, and will help in the previous mentioned algorithm.
+
+
+3- Make an initialization of the library (in the same way that I did with the file_error library) that allows to set what are to be considered "names/values delimiters"
+	(currently spaces), values validators (currently none) and comments starters (currently number sign (#) and semicolon (;) ).
+	This will allows to diversify the use value	of the library. By example if I wants to stablish a variable that return multiple values as an array, and those values are to be
+	paths of file/folders, that could be set by	stablishing the name/values delimiters as spaces, values validators as quotation marks and comments as # and ;
+	
+	This scheme will allow the following structure of a line:
+			
+			{-----------------------------------------------VALID SECTION---------------------------------------------------}{-DISCARDABLE SECTION-}
+			{--------NAME SECTION------}{------------------------------VALUES SECTION---------------------------------------}
+			[delimiter][name][delimiter]<validator>value1</validator>[delimiter]<validator>value2</validator>[delimiter] ... <comment starter> ... [end of line]
+
+	To process that structure of line the algorithm will be:
+
+	 1- Extract the line looking for end of line.
+	 2- Search for a comment starter, if it exist put a couple of ceros in it (or what is the same: \0 as wchar_t)
+	 3- Search for the first token divided by delimiters, that will be the name.
+	 4- 
+
+4- Check that every pointer is initialized as null.
+
+File/Folder classes:
+
+1- Address the problem that arises when the setting "Carpeta_Origen" is filled with the name of a Windows Folder (Archivos de programa, Usuarios, etc.) It seems that this is
+	related to the fact that those system folder are "pointers" or "accesos directos" to real folders in the file system (Program Files, Users). When the real names are used
+	there is not problem.
+
+2- Redesign using inheritance and polymorphism (the File and Folder classes share a lot of members)
+
+3- Check that every pointer is initialized as null.
+
+SyncFolder service:
+
+1- Add the posibility to specify user and password in the install command when the service is installed.
+
+2- En _tmain de SyncFolder.cpp, en la atenci�n al comando install chequear que el par�metro pasado como usuario es un usuario existente en alg�n dominio conocido (si es posible).
+
+3- En _tmain de SyncFolder.cpp, en la atenci�n al comando install chequear que el par�metro pasado como password es v�lido para el usuario. Una posible manera de hacerlo es 
+	ejecutando alguna acci�n en nombre de ese usuario con ese password y si la acci�n se completa correctamente entonces el password es v�lido.
+
+4- Arreglar el problema que ocurre cuando se est� copiando una carpeta y se borra parte de esta del sistema de archivos que ocurre que el programa, a�n cuando ya no existe la carpeta borrada en el sistema de archivos, crea en el servidor la estructura de carpetas. Este problema ocurre porque la sincronizaci�n se realiza desde el objeto Folder en memoria que contiene los cambios que existen entre la carpeta origen y la remota. Cuando se encuentra una carpeta que es nueva se manda a crear en el sistema remoto y se copian los archivos que tiene adentro "desde el sistema de archivos". La creaci�n de la carpeta remota se realiza, a�n cuando ya no existe en el sistema de archivos local, la copia de los archivos contenidos s� da error, pues esos archivos ya no existen. La soluci�n es: cuando se vaya a crear una carpeta en el sistema remoto chequear que esta a�n existe en el sistema local, si no es as� cancelar la creaci�n y eliminar el objeto Folder que la representa en memoria, evitando as� la propagaci�n posterior del error a las subcarpetas contenidas en la carpeta.
+	

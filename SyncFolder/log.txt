@@ -1,0 +1,2 @@
+Domain: 6 :536870925 = Leyendo parámetros desde el archivo de configuración.
+Domain: 0 :El sistema no puede encontrar el archivo especificado. = settings.txt
