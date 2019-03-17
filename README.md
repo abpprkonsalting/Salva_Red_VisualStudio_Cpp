@@ -19,7 +19,9 @@ Instalation
 3- Set the appropiate permisions to the folders, as well as the user in which name the service will we invoqued in case of a remote save.
 
 4- Run the executable passing as parameter: install.
+
    i.e: c:\SyncFolder\> SyncFolder install
+   
    This step must be done with an administrative account, and in an OS with UAC, from an elevated command prompt session. 
    
 5- If the previous step was executed correctly, the output should be: "Service installed successfully". If the output is an initialization error requesting the file "MSVCR100.dll then should be installed the "Microsoft Visual C++ 2010 SP1 Redistributable Package" (vcredist_x86_sp1.exe), and repeat the step 4.
@@ -42,7 +44,9 @@ Uninstall
 ==========
 
 1- Run the executable passing as parameter "uninstall".
+
     i.e: c:\SyncFolder\> SyncFolder uninstall
+    
     This step must be done using an administrative account, and in an OS with UAC, from an elevated command prompt session.
     
 2- If the previous step was executed correctly, the output should be: "Service deleted successfully".
